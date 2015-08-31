@@ -1,5 +1,17 @@
-defmodule Horoscope.Fetch do
+defmodule Horoscope.Scraper do
   use Towel
+  alias Horoscope.Model
+  alias Horoscope.Repo
+
+  def seed do
+    fetch
+    |> Stream.with_index
+    |> Stream.flat_map(fn {horoscopes, offset} ->
+      iso_week = week_number(offset)
+      Enum.map(horoscopes, &changeset(&1, iso_week))
+    end)
+    |> Stream.map(&Repo.insert/1)
+  end
 
   @base "http://www.theonion.com/features/horoscope"
   def fetch do
@@ -15,6 +27,16 @@ defmodule Horoscope.Fetch do
     |> fmap(&Floki.find(&1, ".astro"))
     |> fmap(&Floki.find(&1, ".large-thing"))
     |> fmap(&Enum.map(&1, fn elem -> elem |> Floki.text |> normalize end))
+    |> Result.unwrap
+  end
+
+  defp changeset({sign, prediction}, {year, week}) do
+    Model.changeset(%Model{}, %{
+      year: year,
+      week: week,
+      sign: sign,
+      prediction: prediction
+    })
   end
 
   defp request(url) do
@@ -23,20 +45,6 @@ defmodule Horoscope.Fetch do
     |> fmap(&Floki.parse/1)
   end
 
-  @dates %{
-    "Capricorn"   => {{12, 22}, {1,  19}},
-    "Aquarius"    => {{1,  20}, {2,  18}},
-    "Pisces"      => {{2,  19}, {3,  20}},
-    "Aries"       => {{3,  21}, {4,  19}},
-    "Taurus"      => {{4,  20}, {5,  20}},
-    "Gemini"      => {{5,  21}, {6,  20}},
-    "Cancer"      => {{6,  21}, {7,  22}},
-    "Leo"         => {{7,  23}, {8,  22}},
-    "Virgo"       => {{8,  23}, {9,  22}},
-    "Libra"       => {{9,  23}, {10, 22}},
-    "Scorpio"     => {{10, 22}, {11, 21}},
-    "Sagittarius" => {{11, 22}, {12, 21}}
-  }
   defp normalize(horoscope) do
     [details, prediction] =
       horoscope
@@ -49,6 +57,15 @@ defmodule Horoscope.Fetch do
       |> List.first
       |> String.strip
 
-    {sign, Map.get(@dates, sign), prediction}
+    {sign, prediction}
+  end
+
+  def week_number(offset) do
+    {year, week} = :calendar.iso_week_number()
+    if week > offset do
+      {year, week - offset}
+    else
+      {nil, nil}
+    end
   end
 end

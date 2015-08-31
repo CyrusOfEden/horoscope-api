@@ -5,10 +5,11 @@ defmodule Horoscope do
     import Supervisor.Spec
 
     children = [
-      # worker(Horoscope.Worker, [arg1, arg2, arg3])
+      worker(Horoscope.Repo, []),
+      worker(Horoscope.Worker, [])
     ]
 
-    opts = [strategy: :one_for_one, name: Horoscope.Supervisor]
+    opts = [strategy: :one_for_one, name: Algorithm.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end

@@ -11,12 +11,15 @@ defmodule Horoscope.Mixfile do
   end
 
   def application do
-    [applications: [:logger, :httpoison],
-     mod: {Horoscope, []}]
+    [mod: {Horoscope, []},
+     applications: [:logger, :httpoison, :postgrex, :ecto]]
   end
 
   defp deps do
     [{:httpoison, "~> 0.7"},
-     {:floki, "~> 0.3"}]
+     {:floki, "~> 0.3"},
+     {:ecto, "~> 1.0"},
+     {:postgrex, "~> 0.9"},
+     {:towel, "~> 0.2"}]
   end
 end
