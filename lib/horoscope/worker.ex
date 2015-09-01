@@ -1,31 +1,52 @@
 defmodule Horoscope.Worker do
   use GenServer
+  use Towel
+
+  import DefMemo
+  require Logger
+
   alias Horoscope.Repo
 
   # Public API
-  def get, do: get(:calendar.iso_week_number())
-  def get(sign) when is_binary(sign) do
-    :calendar.iso_week_number()
-    |> Tuple.insert_at(2, sign)
-    |> get
+  def call, do: fetch(:calendar.iso_week_number())
+  def call(sign) when is_binary(sign) do
+    {year, week} = :calendar.iso_week_number()
+    fetch({year, week, sign})
   end
-  def get(params) when tuple_size(params) in [2, 3] do
-    GenServer.call(name, params)
+  def call(params) when tuple_size(params) in [2, 3] do
+    fetch(params)
+  end
+
+  defmemo fetch(params) do
+    :poolboy.transaction(Horoscope.worker_pool, &GenServer.call(&1, params))
   end
 
   # GenServer API
-  def start_link do
-    GenServer.start_link(__MODULE__, [], [name: name])
+  def start_link(_) do
+    GenServer.start_link(__MODULE__, [], [])
   end
 
   def handle_call({year, week}, _from, state) do
-    results = horoscope(year, week) |> Repo.all
-    {:reply, results, state}
+    Logger.debug("Getting horoscopes for week #{week} of #{year}")
+    horoscope(year, week)
+    |> Maybe.wrap
+    |> fmap(&Repo.all/1)
+    |> handle_response(state)
   end
 
   def handle_call({year, week, sign}, _from, state) do
-    result = horoscope(year, week, sign) |> Repo.one
-    {:reply, result, state}
+    Logger.debug("Getting #{sign} horoscope for week #{week} of #{year}")
+    horoscope(year, week, normalize_sign(sign))
+    |> Maybe.wrap
+    |> fmap(&Repo.one/1)
+    |> handle_response(state)
+  end
+
+  defp handle_response(response, state) do
+    case response do
+      {:just, result} -> {:reply, result, state}
+      :nothing        -> {:reply, nil, state}
+    end
   end
 
   # Function API
@@ -35,17 +56,19 @@ defmodule Horoscope.Worker do
   defp horoscope(year, week) do
     Model
     |> where([h], h.year == ^year and h.week == ^week)
-    |> select([h], %{id: h.id, sign: h.sign, prediction: h.prediction})
+    |> select([h], %{sign: h.sign, prediction: h.prediction})
   end
 
+  @signs ~w[Aquarius Aries Cancer Capricorn
+            Gemini Leo Libra Pisces
+            Sagittarius Scorpio Taurus Virgo]
+  defp horoscope(_, _, sign) when not sign in @signs, do: nothing
   defp horoscope(year, week, sign) do
-    sign = sign |> to_string |> String.downcase |> String.capitalize
-
     horoscope(year, week)
     |> where([h], h.sign == ^sign)
   end
 
-  # Config
-  @name :horoscope_worker
-  def name, do: @name
+  defp normalize_sign(sign) do
+    sign |> to_string |> String.downcase |> String.capitalize
+  end
 end

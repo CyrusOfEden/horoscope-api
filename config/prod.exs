@@ -6,4 +6,4 @@ config :data, Data.Repo,
   username: "postgres",
   password: "",
   hostname: "localhost",
-  pool_size: 8
+  pool_size: 16
