@@ -7,32 +7,27 @@ defmodule Horoscope.Router do
   plug :match
   plug :dispatch
 
+  @error Poison.encode!(%{error: "invalid request"})
   def send_json(conn, code, nil) do
-    send_json(conn, code, %{error: "invalid request"})
+    send_json(conn, code, @error)
   end
   def send_json(conn, code, response) do
     conn
     |> put_resp_content_type("application/json")
-    |> send_resp(code, Poison.encode!(response))
+    |> send_resp(code, response)
   end
 
-  get "/" do
-    send_json(conn, 200, Worker.call)
+  def horoscope(conn, params) do
+    case Worker.call(Map.put(params, :encode, true)) do
+      "null"   -> send_json(conn, 400, nil)
+      response -> send_json(conn, 200, response)
+    end
   end
 
-  get "/:sign" do
-    send_json(conn, 200, Worker.call(sign))
-  end
+  get "/",                  do: horoscope(conn, %{})
+  get "/:sign",             do: horoscope(conn, %{sign: sign})
+  get "/:year/:week",       do: horoscope(conn, %{week: {year, week}})
+  get "/:year/:week/:sign", do: horoscope(conn, %{week: {year, week}, sign: sign})
 
-  get "/:year/:week" do
-    send_json(conn, 200, Worker.call({year, week}))
-  end
-
-  get "/:year/:week/:sign" do
-    send_json(conn, 200, Worker.call({year, week, sign}))
-  end
-
-  match _ do
-    send_json(conn, 400, nil)
-  end
+  match _, do: send_json(conn, 400, nil)
 end

@@ -7,8 +7,7 @@ defmodule Horoscope.Scraper do
     fetch
     |> Stream.with_index
     |> Stream.flat_map(fn {horoscopes, offset} ->
-      iso_week = week_number(offset)
-      Enum.map(horoscopes, &changeset(&1, iso_week))
+      Enum.map(horoscopes, &changeset(&1, week_number(offset)))
     end)
     |> Stream.map(&Repo.insert/1)
   end

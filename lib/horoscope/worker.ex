@@ -8,17 +8,27 @@ defmodule Horoscope.Worker do
   alias Horoscope.Repo
 
   # Public API
-  def call, do: fetch(:calendar.iso_week_number())
-  def call(sign) when is_binary(sign) do
-    {year, week} = :calendar.iso_week_number()
-    fetch({year, week, sign})
-  end
-  def call(params) when tuple_size(params) in [2, 3] do
-    fetch(params)
+  @default_opts %{encode: false}
+  def call(opts \\ %{}) do
+    Map.merge(@default_opts, opts)
+    |> Map.put_new(:week, :calendar.iso_week_number())
+    |> Map.put_new(:sign, nil)
+    |> process
   end
 
-  defmemo fetch(params) do
-    :poolboy.transaction(Horoscope.worker_pool, &GenServer.call(&1, params))
+  def process(%{sign: nil, week: {_, _} = week, encode: encode}) do
+    fetch(week, encode)
+  end
+  def process(%{sign: sign, week: {year, week}, encode: encode}) do
+    fetch({year, week, sign}, encode)
+  end
+
+  defmemo fetch(params, encode) do
+    data = :poolboy.transaction(Horoscope.worker_pool, &GenServer.call(&1, params))
+    case encode do
+      true ->  Poison.encode!(data)
+      false -> data
+    end
   end
 
   # GenServer API
