@@ -6,4 +6,4 @@ config :horoscope, Horoscope.Repo,
   username: "postgres",
   password: "",
   hostname: "localhost",
-  pool_size: 4
+  pool_size: 2
