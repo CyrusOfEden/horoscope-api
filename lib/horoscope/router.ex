@@ -2,7 +2,7 @@ defmodule Horoscope.Router do
   use Plug.Router
   alias Horoscope.Worker
 
-  Mix.env == :dev && use Plug.Debugger
+  Mix.env == :dev and use Plug.Debugger
 
   plug :match
   plug :dispatch
