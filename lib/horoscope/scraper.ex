@@ -21,17 +21,13 @@ defmodule Horoscope.Scraper do
   end
 
   def seed(count \\ 24) do
+  def seed(:all) do
     fetch
-    |> Stream.map(&Model.changeset(%Model{}, &1))
-    |> (fn sets ->
-      case count do
-        n when is_integer(n) ->
-          sets |> Stream.take(n)
-        :all ->
-          sets
-      end
-    end).()
-    |> Enum.each(&Repo.insert/1)
+    |> Stream.map(&Model.changeset(&Model{}, &1))
+  end
+  def seed(count) when is_integer(count) do
+    seed(:all)
+    |> Stream.take(count)
   end
 
   def get(url) do
