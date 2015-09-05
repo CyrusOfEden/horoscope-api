@@ -2,8 +2,6 @@ defmodule Horoscope.Worker do
   use GenServer
   use Towel
 
-  require Logger
-
   alias Horoscope.Repo
 
   # Public API
@@ -37,7 +35,6 @@ defmodule Horoscope.Worker do
   end
 
   def handle_call({year, week}, _from, state) do
-    Logger.debug("Getting horoscopes for week #{week} of #{year}")
     horoscope(year, week)
     |> Maybe.wrap
     |> fmap(&Repo.all/1)
@@ -45,7 +42,6 @@ defmodule Horoscope.Worker do
   end
 
   def handle_call({year, week, sign}, _from, state) do
-    Logger.debug("Getting #{sign} horoscope for week #{week} of #{year}")
     horoscope(year, week, normalize_sign(sign))
     |> Maybe.wrap
     |> fmap(&Repo.one/1)

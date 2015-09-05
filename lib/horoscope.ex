@@ -1,6 +1,5 @@
 defmodule Horoscope do
   use Application
-  require Logger
 
   def worker_pool, do: :horoscope_workers
   def worker_pool_config do
