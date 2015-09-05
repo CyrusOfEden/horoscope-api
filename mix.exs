@@ -12,8 +12,7 @@ defmodule Horoscope.Mixfile do
 
   def application do
     [mod: {Horoscope, []},
-     applications: [:logger,
-                    :defmemo, :quantum,
+     applications: [:logger, :quantum,
                     :cowboy, :plug,
                     :poolboy, :httpoison,
                     :postgrex, :ecto]]
@@ -29,7 +28,7 @@ defmodule Horoscope.Mixfile do
      {:ecto, "~> 1.0"},
      {:postgrex, "~> 0.9"},
      {:towel, "~> 0.2"},
-     {:defmemo, "~> 0.1"},
-     {:quantum, "~> 1.3"}]
+     {:quantum, "~> 1.4"},
+     {:churchill, github: "knrz/churchill"}]
   end
 end

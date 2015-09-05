@@ -2,7 +2,6 @@ defmodule Horoscope.Worker do
   use GenServer
   use Towel
 
-  import DefMemo
   require Logger
 
   alias Horoscope.Repo
@@ -23,7 +22,8 @@ defmodule Horoscope.Worker do
     fetch({year, week, sign}, encode)
   end
 
-  defmemo fetch(params, encode) do
+  # Memoize
+  def fetch(params, encode) do
     data = :poolboy.transaction(Horoscope.worker_pool, &GenServer.call(&1, params))
     case encode do
       true ->  Poison.encode!(data)
@@ -69,9 +69,9 @@ defmodule Horoscope.Worker do
     |> select([h], %{sign: h.sign, prediction: h.prediction})
   end
 
-  @signs ~w[Aquarius Aries Cancer Capricorn
-            Gemini Leo Libra Pisces
-            Sagittarius Scorpio Taurus Virgo]
+  @signs ~w[aquarius aries cancer capricorn
+            gemini leo libra pisces
+            sagittarius scorpio taurus virgo]
   defp horoscope(_, _, sign) when not sign in @signs, do: nothing
   defp horoscope(year, week, sign) do
     horoscope(year, week)
@@ -79,6 +79,6 @@ defmodule Horoscope.Worker do
   end
 
   defp normalize_sign(sign) do
-    sign |> to_string |> String.downcase |> String.capitalize
+    sign |> to_string |> String.downcase
   end
 end

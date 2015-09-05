@@ -31,4 +31,7 @@ defmodule Horoscope do
     Logger.info("Server running on port 4000")
     {:ok, _} = Plug.Adapters.Cowboy.http(Horoscope.Router, [])
   end
+
+  defdelegate get, to: Horoscope.Worker, as: :call
+  defdelegate get(params), to: Horoscope.Worker, as: :call
 end

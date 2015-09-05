@@ -1,41 +1,69 @@
 defmodule Horoscope.Scraper do
   use Towel
-  alias Horoscope.Model
-  alias Horoscope.Repo
 
-  def seed do
-    fetch
-    |> Stream.with_index
-    |> Stream.flat_map(fn {horoscopes, offset} ->
-      Enum.map(horoscopes, &changeset(&1, week_number(offset)))
-    end)
-    |> Stream.map(&Repo.insert/1)
-  end
+  alias Horoscope.Repo
+  alias Horoscope.Model
 
   @base "http://www.theonion.com/features/horoscope"
   def fetch do
-    request(@base)
-    |> fmap(&Floki.find(&1, ".reading-list-item"))
-    |> fmap(&Floki.attribute(&1, "data-absolute-url"))
-    |> fmap(&Stream.map(&1, fn item -> get(item) end))
-    |> Result.unwrap
+    case request(@base) do
+      {:ok, page} ->
+        page
+        |> Floki.find(".reading-list-item")
+        |> Floki.attribute("data-absolute-url")
+        |> Stream.map(&get/1)
+        |> Stream.flat_map(fn {:ok, {horoscopes, date}} ->
+          Enum.map(horoscopes, &params(&1, date))
+        end)
+      {:error, r} ->
+        error(r)
+    end
   end
 
-  defp get(page) do
-    request(page)
-    |> fmap(&Floki.find(&1, ".astro"))
-    |> fmap(&Floki.find(&1, ".large-thing"))
-    |> fmap(&Enum.map(&1, fn elem -> elem |> Floki.text |> normalize end))
-    |> Result.unwrap
+  def seed(count \\ 24) do
+    fetch
+    |> Stream.map(&Model.changeset(%Model{}, &1))
+    |> (fn sets ->
+      case count do
+        n when is_integer(n) ->
+          sets |> Stream.take(n)
+        :all ->
+          sets
+      end
+    end).()
+    |> Enum.each(&Repo.insert/1)
   end
 
-  defp changeset({sign, prediction}, {year, week}) do
-    Model.changeset(%Model{}, %{
-      year: year,
-      week: week,
+  def get(url) do
+    case request(url) do
+      {:ok, page} ->
+        horoscopes =
+          page
+          |> Floki.find(".astro")
+          |> Floki.find(".large-thing")
+          |> Enum.map(fn elem -> elem |> Floki.text |> normalize end)
+        date =
+          page
+          |> Floki.find(".content-published")
+          |> Floki.text
+          |> String.strip
+          |> parse_date
+
+        ok({horoscopes, date})
+      {:error, r} ->
+        error(r)
+    end
+  end
+
+  defp params({sign, prediction}, date) do
+    {year, week} = :calendar.iso_week_number(date)
+    %{
       sign: sign,
-      prediction: prediction
-    })
+      prediction: prediction,
+      date: date,
+      week: week,
+      year: year
+    }
   end
 
   defp request(url) do
@@ -59,12 +87,27 @@ defmodule Horoscope.Scraper do
     {sign, prediction}
   end
 
-  def week_number(offset) do
-    {year, week} = :calendar.iso_week_number()
-    if week > offset do
-      {year, week - offset}
-    else
-      {nil, nil}
-    end
+  def parse_date(string) when is_binary(string) do
+    [month, day, year] = parse_tokens(string)
+    {day,_} = Integer.parse(day)
+    {year,_} = Integer.parse(year)
+    month = month_number(month)
+    {year, month, day}
+  end
+
+  defp parse_tokens(string) when is_binary(string) do
+    string
+    |> String.split(~r/\s/)
+    |> Enum.map(&String.replace(&1, ~r/[^\w]/, ""))
+  end
+
+  @months ~w[january february march april
+             may june july august september
+             october november december]
+             |> Enum.with_index
+             |> Enum.map(fn {month, number} -> {month, number + 1} end)
+  defp month_number(month) do
+    {_,number} = @months |> List.keyfind(String.downcase(month), 0, {nil, nil})
+    number
   end
 end

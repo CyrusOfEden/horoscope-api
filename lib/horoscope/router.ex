@@ -8,9 +8,7 @@ defmodule Horoscope.Router do
   plug :dispatch
 
   @error Poison.encode!(%{error: "invalid request"})
-  def send_json(conn, code, nil) do
-    send_json(conn, code, @error)
-  end
+  @empty Poison.encode!(%{error: "no horoscopes for that week"})
   def send_json(conn, code, response) do
     conn
     |> put_resp_content_type("application/json")
@@ -19,8 +17,9 @@ defmodule Horoscope.Router do
 
   def horoscope(conn, params) do
     case Worker.call(Map.put(params, :encode, true)) do
-      "null"   -> send_json(conn, 400, nil)
-      response -> send_json(conn, 200, response)
+      "null" -> send_json(conn, 400, @error)
+      "[]"   -> send_json(conn, 200, @empty)
+      result -> send_json(conn, 200, result)
     end
   end
 
