@@ -1,6 +1,7 @@
 defmodule Horoscope.Worker do
   use GenServer
   use Towel
+  import Horoscope, only: [worker_pool: 0]
 
   alias Horoscope.Repo
 
@@ -13,8 +14,8 @@ defmodule Horoscope.Worker do
     |> process
   end
 
-  def process(%{sign: nil, week: {_, _} = week, encode: encode}) do
-    fetch(week, encode)
+  def process(%{sign: nil, week: {year, week}, encode: encode}) do
+    fetch({year, week}, encode)
   end
   def process(%{sign: sign, week: {year, week}, encode: encode}) do
     fetch({year, week, sign}, encode)
@@ -22,9 +23,9 @@ defmodule Horoscope.Worker do
 
   # Memoize
   def fetch(params, encode) do
-    data = :poolboy.transaction(Horoscope.worker_pool, &GenServer.call(&1, params))
+    data = :poolboy.transaction(worker_pool, &GenServer.call(&1, params))
     case encode do
-      true ->  Poison.encode!(data)
+      true  -> Poison.encode!(data)
       false -> data
     end
   end
