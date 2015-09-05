@@ -20,12 +20,12 @@ defmodule Horoscope.Scraper do
     end
   end
 
-  def stream(save \\ false)
-  def stream(false) do
+  def changesets(save \\ false)
+  def changesets(false) do
     fetch |> Stream.map(&Model.changeset(%Model{}, &1))
   end
-  def stream(true) do
-    stream(false) |> Stream.map(&Repo.insert/1)
+  def changesets(true) do
+    changesets(false) |> Stream.map(&Repo.insert/1)
   end
 
   def get(url) do
