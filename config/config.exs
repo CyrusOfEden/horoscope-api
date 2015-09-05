@@ -1,7 +1,7 @@
 use Mix.Config
 
 work = fn ->
-  apply("Horoscope.Scraper", :seed, [])
+  apply("Horoscope.Scraper", :seed, [12, true])
   |> Stream.run
 end
 

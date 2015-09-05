@@ -13,7 +13,6 @@ defmodule Horoscope.Mixfile do
   def application do
     [mod: {Horoscope, []},
      applications: [:logger, :quantum,
-                    :cowboy, :plug,
                     :poolboy, :httpoison,
                     :postgrex, :ecto]]
   end

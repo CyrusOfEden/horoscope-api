@@ -20,14 +20,21 @@ defmodule Horoscope.Scraper do
     end
   end
 
-  def seed(count \\ 24) do
-  def seed(:all) do
+  def seed(count \\ 12, save \\ false)
+  def seed(:all, save) do
     fetch
-    |> Stream.map(&Model.changeset(&Model{}, &1))
+    |> Stream.map(&Model.changeset(%Model{}, &1))
+    |> persist(save)
   end
-  def seed(count) when is_integer(count) do
+  def seed(count, save) when is_integer(count) and count > 0 do
     seed(:all)
     |> Stream.take(count)
+    |> persist(save)
+  end
+
+  defp persist(horoscopes, false), do: horoscopes
+  defp persist(horoscopes, true) do
+    horoscopes |> Stream.map(&Repo.insert/1)
   end
 
   def get(url) do
