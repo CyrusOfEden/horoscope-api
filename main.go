@@ -1,18 +1,20 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
-    "github.com/robfig/cron"
-    "github.com/PuerkitoBio/goquery"
+	"github.com/PuerkitoBio/goquery"
 )
 
 import (
 	"encoding/json"
 	"fmt"
+	"flag"
 	"log"
-	"strconv"
 	"strings"
+	"strconv"
 	"time"
+	"path"
+	"os"
+	"io/ioutil"
 )
 
 const dateFormat string = "Jan 2, 2006"
@@ -57,49 +59,59 @@ func parsePage(doc *goquery.Document) []horoscope {
 }
 
 func fetchHoroscopes(url string) []horoscope {
-	doc, _ := goquery.NewDocument(url)
+	doc, err := goquery.NewDocument(url)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return parsePage(doc)
 }
 
-func seed() [][]horoscope {
+func seedHoroscopes() []horoscope {
 	doc, err := goquery.NewDocument(onionHoroscopeUrl)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	hs := [][]horoscope{}
+	hs := make([]horoscope, 0)
 	doc.Find(".reading-list-item").Each(func(i int, s *goquery.Selection) {
 		url, _ := s.Attr("data-absolute-url")
-		hs = append(hs, fetchHoroscopes("http://"+url))
+		hs = append(hs, fetchHoroscopes("http://"+url)...)
 	})
 	return hs
 }
 
+func cacheHoroscopes(hs []horoscope) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatal("Failed to get working directory: ", err)
+	}
+
+	for _, h := range hs {
+		p := path.Join(cwd, "data", strconv.Itoa(h.Year), strconv.Itoa(h.Week))
+
+		if err := os.MkdirAll(p, 0777); err != nil {
+			log.Fatal("Failed to make directory: ", err)
+		}
+
+		mrshl, _ := json.Marshal(h)
+		ioutil.WriteFile(path.Join(p, h.Sign + ".json"), mrshl, 0644)
+	}
+}
+
 func main() {
-	cr := cron.New()
-	cr.AddFunc("@weekly", func() {})
-	cr.Start()
+	seedPtr := flag.Bool("seed", false, "perform the initial seed")
+	flag.Parse()
 
-	app := gin.Default()
+	var hs []horoscope
+	if *seedPtr == true {
+		fmt.Println("Fetching all horoscopes...")
+		hs = seedHoroscopes()
+	} else {
+		fmt.Println("Fetching current horoscopes...")
+		hs = fetchHoroscopes(onionHoroscopeUrl)
+	}
 
-	app.GET("/current", func(c *gin.Context) {
-		y, w := time.Now().ISOWeek()
-		c.Data(200, "application/json", wc[y][w])
-	})
-	app.GET("/current/:sign", func(c *gin.Context) {
-		y, w := time.Now().ISOWeek()
-		c.Data(200, "application/json", sc[y][w][c.Param("sign")])
-	})
-	app.GET("/archive/:year/:week", func(c *gin.Context) {
-		y, _ := strconv.Atoi(c.Param("year"))
-		w, _ := strconv.Atoi(c.Param("week"))
-		c.Data(200, "application/json", wc[y][w])
-	})
-	app.GET("/archive/:year/:week/:sign", func(c *gin.Context) {
-		y, _ := strconv.Atoi(c.Param("year"))
-		w, _ := strconv.Atoi(c.Param("week"))
-		c.Data(200, "application/json", sc[y][w][c.Param("sign")])
-	})
-
-	app.Run(":8000")
+	fmt.Println("Caching horoscopes...")
+	cacheHoroscopes(hs)
+	fmt.Println("Done!")
 }
