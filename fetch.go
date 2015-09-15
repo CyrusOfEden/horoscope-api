@@ -49,11 +49,8 @@ func parseDate(text string) (time.Time, error) {
 
 func parsePage(doc *goquery.Document) []horoscope {
 	date, err := parseDate(doc.Find(".content-published").Text())
-	if err == nil {
-		fmt.Printf("Fetched horocopes for %s\n", date)
-	} else {
-		panic(err)
-	}
+	check(err)
+	fmt.Printf("Fetched horocopes for %s\n", date)
 
 	hs := make([]horoscope, 12)
 	doc.Find(".astro .large-thing").Each(func(i int, s *goquery.Selection) {
@@ -70,9 +67,7 @@ func processUrl(url string) {
 
 func cacheHoroscopes(hs []horoscope) {
 	cwd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
+	check(err)
 
 	p := path.Join(cwd, "data", strconv.Itoa(hs[0].Year), strconv.Itoa(hs[0].Week))
 	err = os.MkdirAll(p, 0777)
