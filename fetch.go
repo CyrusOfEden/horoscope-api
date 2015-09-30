@@ -64,17 +64,17 @@ func parsePage(doc *goquery.Document) []horoscope {
 	return hs
 }
 
-func process(url string) {
+func process(url string, path string) {
 	doc, err := goquery.NewDocument(url)
 	check(err)
-	cacheHoroscopes(parsePage(doc))
+	cacheHoroscopes(parsePage(doc), path)
 }
 
-func cacheHoroscopes(hs []horoscope) {
+func cacheHoroscopes(hs []horoscope, outPath string) {
 	cwd, err := os.Getwd()
 	check(err)
 
-	p := path.Join(cwd, "data", strconv.Itoa(hs[0].Year), strconv.Itoa(hs[0].Week))
+	p := path.Join(cwd, outPath, strconv.Itoa(hs[0].Year), strconv.Itoa(hs[0].Week))
 	err = os.MkdirAll(p, 0777)
 	check(err)
 
@@ -90,11 +90,11 @@ func cacheHoroscopes(hs []horoscope) {
 }
 
 // Public API
-func FetchHoroscopes() {
-	process(onionHoroscopeUrl)
+func FetchHoroscopes(outPath string) {
+	process(onionHoroscopeUrl, outPath)
 }
 
-func SeedHoroscopes() {
+func SeedHoroscopes(outPath string) {
 	doc, err := goquery.NewDocument(onionHoroscopeUrl)
 	check(err)
 
@@ -103,10 +103,10 @@ func SeedHoroscopes() {
 	doc.Find(".reading-list-item").Each(func(i int, s *goquery.Selection) {
 		url, _ := s.Attr("data-absolute-url")
 		group.Add(1)
-		go func(url string) {
-			process(url)
+		go func(url, outPath string) {
+			process(url, outPath)
 			group.Done()
-		}("http://" + url)
+		}("http://" + url, outPath)
 	})
 
 	group.Wait()
