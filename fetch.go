@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"sync"
 )
 
 const dateFormat string = "Jan 2, 2006"
@@ -31,13 +32,12 @@ func check(err error) {
 	}
 }
 
-func parseHoroscope(text string, date time.Time) horoscope {
+func parseHoroscope(text string) horoscope {
 	ls := strings.Split(strings.Trim(text, " \n"), "\n")
 	l1, p := ls[0], strings.Trim(ls[1], " \n")
 	ts := strings.Split(l1, " | ")
 	s := strings.ToLower(ts[0])
-	y, w := date.ISOWeek()
-	return horoscope{Sign: s, Prediction: p, Year: y, Week: w}
+	return horoscope{Sign: s, Prediction: p}
 }
 
 func parseDate(text string) (time.Time, error) {
@@ -50,16 +50,21 @@ func parseDate(text string) (time.Time, error) {
 func parsePage(doc *goquery.Document) []horoscope {
 	date, err := parseDate(doc.Find(".content-published").Text())
 	check(err)
-	fmt.Printf("Fetched horocopes for %s\n", date)
+
+	y, w := date.ISOWeek()
+	fmt.Printf("Fetched horocopes for week %d of %d\n", w, y)
 
 	hs := make([]horoscope, 12)
 	doc.Find(".astro .large-thing").Each(func(i int, s *goquery.Selection) {
-		hs[i] = parseHoroscope(s.Text(), date)
+		h := parseHoroscope(s.Text())
+		h.Year = y
+		h.Week = w
+		hs[i] = h
 	})
 	return hs
 }
 
-func processUrl(url string) {
+func process(url string) {
 	doc, err := goquery.NewDocument(url)
 	check(err)
 	cacheHoroscopes(parsePage(doc))
@@ -86,26 +91,23 @@ func cacheHoroscopes(hs []horoscope) {
 
 // Public API
 func FetchHoroscopes() {
-	processUrl(onionHoroscopeUrl)
+	process(onionHoroscopeUrl)
 }
 
 func SeedHoroscopes() {
 	doc, err := goquery.NewDocument(onionHoroscopeUrl)
 	check(err)
 
-	messages := make(chan bool)
+	var group sync.WaitGroup
 
-	elems := doc.Find(".reading-list-item")
-
-	elems.Each(func(i int, s *goquery.Selection) {
+	doc.Find(".reading-list-item").Each(func(i int, s *goquery.Selection) {
 		url, _ := s.Attr("data-absolute-url")
+		group.Add(1)
 		go func(url string) {
-			processUrl(url)
-			messages <- true
+			process(url)
+			group.Done()
 		}("http://" + url)
 	})
 
-	for i := 0; i < elems.Length(); i++ {
-		<-messages
-	}
+	group.Wait()
 }
