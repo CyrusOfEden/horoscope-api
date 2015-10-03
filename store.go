@@ -20,7 +20,19 @@ type store struct {
 	Cache *cache.Cache
 }
 
-func (s *store) getAndUpdate(key string, filePath string) ([]byte, bool) {
+func (s *store) getHoroscopesIndex(y, w string) (p string, k string) {
+	p = path.Join(y, w, "index.json")
+	k = encodeKey(y, w)
+	return
+}
+
+func (s *store) getHoroscopeIndex(y, w, sign string) (p string, k string) {
+	p = path.Join(y, w, sign+".json")
+	k = encodeKey(y, w, sign)
+	return
+}
+
+func (s *store) getAndUpdate(filePath, key string) ([]byte, bool) {
 	if data, found := s.Cache.Get(key); found {
 		return data.([]byte), true
 	}
@@ -38,11 +50,13 @@ func (s *store) getAndUpdate(key string, filePath string) ([]byte, bool) {
 }
 
 func (s *store) GetHoroscopes(y, w string) ([]byte, bool) {
-	return s.getAndUpdate(encodeKey(y, w), path.Join(y, w, "index.json"))
+	p, k := s.getHoroscopesIndex(y, w)
+	return s.getAndUpdate(p, k)
 }
 
 func (s *store) GetHoroscope(y, w, sign string) ([]byte, bool) {
-	return s.getAndUpdate(encodeKey(y, w, sign), path.Join(y, w, sign+".json"))
+	p, k := s.getHoroscopeIndex(y, w, sign)
+	return s.getAndUpdate(p, k)
 }
 
 func Store() *store {
