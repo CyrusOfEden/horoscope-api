@@ -26,12 +26,6 @@ type horoscope struct {
 	Prediction string `json:"prediction"`
 }
 
-func check(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 func parseHoroscope(text string) horoscope {
 	ls := strings.Split(strings.Trim(text, " \n"), "\n")
 	l1, p := ls[0], strings.Trim(ls[1], " \n")

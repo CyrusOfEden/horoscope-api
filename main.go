@@ -3,10 +3,31 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"time"
 )
+
+func check(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
 
 func OutputPath() string {
 	return "horoscopes"
+}
+
+func periodicallyUpdate() *time.Ticker {
+	ticker := time.NewTicker(time.Hour * 24 * 7)
+	go func() {
+		for t := range ticker.C {
+			FetchHoroscopes()
+			data, err := t.MarshalText()
+			check(err)
+			ioutil.WriteFile("last_update.txt", data, 0644)
+		}
+	}()
+	return ticker
 }
 
 func main() {
@@ -24,11 +45,13 @@ func main() {
 		FetchHoroscopes()
 	}
 
-	fmt.Println(" done!")
+	fmt.Println("Done!")
 
 	if *serverPtr {
+		fmt.Println("Scheduling periodic updates... ")
+		periodicallyUpdate()
+
 		fmt.Println("Bootstrapping server...")
-		s := Server()
-		s.Run(":" + *portPtr)
+		Server().Run(":" + *portPtr)
 	}
 }
