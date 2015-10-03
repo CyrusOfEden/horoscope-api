@@ -12,8 +12,8 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"time"
 	"sync"
+	"time"
 )
 
 const dateFormat string = "Jan 2, 2006"
@@ -64,17 +64,17 @@ func parsePage(doc *goquery.Document) []horoscope {
 	return hs
 }
 
-func process(url string, path string) {
+func process(url string) {
 	doc, err := goquery.NewDocument(url)
 	check(err)
-	cacheHoroscopes(parsePage(doc), path)
+	cacheHoroscopes(parsePage(doc))
 }
 
-func cacheHoroscopes(hs []horoscope, outPath string) {
+func cacheHoroscopes(hs []horoscope) {
 	cwd, err := os.Getwd()
 	check(err)
 
-	p := path.Join(cwd, outPath, strconv.Itoa(hs[0].Year), strconv.Itoa(hs[0].Week))
+	p := path.Join(cwd, OutputPath(), strconv.Itoa(hs[0].Year), strconv.Itoa(hs[0].Week))
 	err = os.MkdirAll(p, 0777)
 	check(err)
 
@@ -90,11 +90,11 @@ func cacheHoroscopes(hs []horoscope, outPath string) {
 }
 
 // Public API
-func FetchHoroscopes(outPath string) {
-	process(onionHoroscopeUrl, outPath)
+func FetchHoroscopes() {
+	process(onionHoroscopeUrl)
 }
 
-func SeedHoroscopes(outPath string) {
+func SeedHoroscopes() {
 	doc, err := goquery.NewDocument(onionHoroscopeUrl)
 	check(err)
 
@@ -103,10 +103,10 @@ func SeedHoroscopes(outPath string) {
 	doc.Find(".reading-list-item").Each(func(i int, s *goquery.Selection) {
 		url, _ := s.Attr("data-absolute-url")
 		group.Add(1)
-		go func(url, outPath string) {
-			process(url, outPath)
+		go func(url string) {
+			process(url)
 			group.Done()
-		}("http://" + url, outPath)
+		}("http://" + url)
 	})
 
 	group.Wait()

@@ -5,19 +5,30 @@ import (
 	"fmt"
 )
 
+func OutputPath() string {
+	return "horoscopes"
+}
+
 func main() {
 	seedPtr := flag.Bool("seed", false, "perform the initial seed")
-	pathPtr := flag.String("path", "data", "output path")
+	serverPtr := flag.Bool("server", false, "start the web server")
+	portPtr := flag.String("port", "8080", "port to run the web server")
 
 	flag.Parse()
 
-	if *seedPtr == true {
+	if *seedPtr {
 		fmt.Println("Fetching all horoscopes...")
-		SeedHoroscopes(*pathPtr)
+		SeedHoroscopes()
 	} else {
 		fmt.Println("Fetching current horoscopes...")
-		FetchHoroscopes(*pathPtr)
+		FetchHoroscopes()
 	}
 
-	fmt.Println("Done!")
+	fmt.Println(" done!")
+
+	if *serverPtr {
+		fmt.Println("Bootstrapping server...")
+		s := Server()
+		s.Run(":" + *portPtr)
+	}
 }
