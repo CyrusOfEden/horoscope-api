@@ -10,37 +10,33 @@ import (
 	"time"
 )
 
-func getDate(c *gin.Context) (year, week string) {
-	year = c.MustGet("year").(string)
-	week = c.MustGet("week").(string)
-	return
+func getDate(c *gin.Context) (string, string) {
+	return c.MustGet("year").(string), c.MustGet("week").(string)
 }
 
 func mountRoutes(r *gin.RouterGroup) {
 	r.GET("/", func(c *gin.Context) {
-		cache := c.MustGet("store").(*store)
-		y, w := getDate(c)
-		if hs, found := cache.GetHoroscopes(y, w); found {
-			c.Data(http.StatusOK, "application/json", hs)
+		s := c.MustGet("store").(*store)
+		year, week := getDate(c)
+		if horoscopes, found := s.GetHoroscopes(year, week); found {
+			c.Data(http.StatusOK, "application/json", horoscopes)
 		} else {
 			c.AbortWithStatus(http.StatusNotFound)
 		}
 	})
 	r.GET("/:sign", func(c *gin.Context) {
-		cache := c.MustGet("store").(*store)
-		y, w := getDate(c)
-		s := c.Param("sign")
-		if h, found := cache.GetHoroscope(y, w, s); found {
-			c.Data(http.StatusOK, "application/json", h)
+		s := c.MustGet("store").(*store)
+		year, week := getDate(c)
+		sign := c.Param("sign")
+		if horoscope, found := s.GetHoroscope(year, week, sign); found {
+			c.Data(http.StatusOK, "application/json", horoscope)
 		} else {
 			c.AbortWithStatus(http.StatusNotFound)
 		}
 	})
 }
 
-func Server() *gin.Engine {
-	s := Store()
-
+func Server(s *store) *gin.Engine {
 	r := gin.Default()
 	r.Use(func(c *gin.Context) {
 		c.Set("store", s)

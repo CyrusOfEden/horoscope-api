@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"time"
 )
 
@@ -17,14 +16,11 @@ func OutputPath() string {
 	return "horoscopes"
 }
 
-func periodicallyUpdate() *time.Ticker {
+func periodically(fn func(time.Time)) *time.Ticker {
 	ticker := time.NewTicker(time.Hour * 24 * 7)
 	go func() {
 		for t := range ticker.C {
-			FetchHoroscopes()
-			data, err := t.MarshalText()
-			check(err)
-			ioutil.WriteFile("last_update.txt", data, 0644)
+			fn(t)
 		}
 	}()
 	return ticker
@@ -33,7 +29,7 @@ func periodicallyUpdate() *time.Ticker {
 func main() {
 	seedPtr := flag.Bool("seed", false, "perform the initial seed")
 	serverPtr := flag.Bool("server", false, "start the web server")
-	portPtr := flag.String("port", "8080", "port to run the web server")
+	portPtr := flag.String("port", ":8000", "port to run the web server")
 
 	flag.Parse()
 
@@ -45,13 +41,20 @@ func main() {
 		FetchHoroscopes()
 	}
 
-	fmt.Println("Done!")
-
 	if *serverPtr {
-		fmt.Println("Scheduling periodic updates... ")
-		periodicallyUpdate()
+		fmt.Print("Setting up store...")
+		s := Store()
+		s.BuildIndexes()
+		fmt.Println(" done!")
+
+		fmt.Print("Scheduling periodic updates... ")
+		periodically(func(t time.Time) {
+			FetchHoroscopes()
+			s.BuildIndexes()
+		})
+		fmt.Println(" done!")
 
 		fmt.Println("Bootstrapping server...")
-		Server().Run(":" + *portPtr)
+		Server(s).Run(*portPtr)
 	}
 }
