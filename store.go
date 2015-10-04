@@ -28,6 +28,15 @@ func (s *store) getPath(y, w, filename string) string {
 	return path.Join(y, w, filename+".json")
 }
 
+func (s *store) HasWeek(y, w string) bool {
+	_, ok := s.weekIndex[y][w]
+	return ok
+}
+
+func (s *store) HasWeekStrict(y, w string) bool {
+	return s.weekIndex[y][w] == w
+}
+
 func (s *store) BuildIndexes() {
 	var cwd, yn, ysp, wn, wsp, prevn string
 	var ws []int

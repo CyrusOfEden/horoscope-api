@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"time"
@@ -30,10 +31,18 @@ func main() {
 	seedPtr := flag.Bool("seed", false, "perform the initial seed")
 	serverPtr := flag.Bool("server", false, "start the web server")
 	portPtr := flag.String("port", ":8000", "port to run the web server")
+	releasePtr := flag.Bool("release", false, "set the mode to release")
+	debugPtr := flag.Bool("debug", false, "enable debugging mode")
 
 	flag.Parse()
 
-	if *seedPtr {
+	seed := *seedPtr
+	server := *serverPtr
+	port := *portPtr
+	release := *releasePtr
+	debug := *debugPtr
+
+	if seed {
 		fmt.Println("Fetching all horoscopes...")
 		SeedHoroscopes()
 	} else {
@@ -41,20 +50,29 @@ func main() {
 		FetchHoroscopes()
 	}
 
-	if *serverPtr {
-		fmt.Print("Setting up store...")
+	if server {
+		fmt.Print("Setting up store... ")
 		s := Store()
 		s.BuildIndexes()
-		fmt.Println(" done!")
+		fmt.Println("done!")
+
+		if debug {
+			data, _ := json.MarshalIndent(s.weekIndex, "", "  ")
+			fmt.Println(string(data), "", "  ")
+		}
 
 		fmt.Print("Scheduling periodic updates... ")
 		periodically(func(t time.Time) {
 			FetchHoroscopes()
 			s.BuildIndexes()
 		})
-		fmt.Println(" done!")
+		fmt.Println("done!")
 
-		fmt.Println("Bootstrapping server...")
-		Server(s).Run(*portPtr)
+		fmt.Println("Bootstrapping server... done!")
+		if debug {
+			Server(s, false).Run(port)
+		} else {
+			Server(s, release).Run(port)
+		}
 	}
 }

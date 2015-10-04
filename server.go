@@ -10,55 +10,81 @@ import (
 	"time"
 )
 
-func getDate(c *gin.Context) (string, string) {
+func getISOWeek(c *gin.Context) (string, string) {
 	return c.MustGet("year").(string), c.MustGet("week").(string)
 }
 
-func mountRoutes(r *gin.RouterGroup) {
+func bootstrapMiddleware(s *store) func(*gin.Context) {
+	return func(c *gin.Context) {
+		c.Set("store", s)
+		c.Set("human", c.DefaultQuery("human", "true") == "true")
+		c.Next()
+	}
+}
+
+func latestMiddleware(c *gin.Context) {
+	y, w := time.Now().ISOWeek()
+	c.Set("year", strconv.Itoa(y))
+	c.Set("week", strconv.Itoa(w))
+	c.Next()
+}
+
+func paramsMiddleware(c *gin.Context) {
+	c.Set("year", c.Param("year"))
+	c.Set("week", c.Param("week"))
+	c.Next()
+}
+
+func humanMiddleware(c *gin.Context) {
+	s := c.MustGet("store").(*store)
+	h := c.MustGet("human").(bool)
+	y, w := getISOWeek(c)
+	if !h && !s.HasWeekStrict(y, w) {
+		c.AbortWithStatus(http.StatusNotFound)
+	} else {
+		c.Next()
+	}
+}
+
+func mount(r *gin.RouterGroup) {
 	r.GET("/", func(c *gin.Context) {
 		s := c.MustGet("store").(*store)
-		year, week := getDate(c)
-		if horoscopes, found := s.GetHoroscopes(year, week); found {
-			c.Data(http.StatusOK, "application/json", horoscopes)
+		y, w := getISOWeek(c)
+		if data, found := s.GetHoroscopes(y, w); found {
+			c.Data(http.StatusOK, "application/json", data)
 		} else {
 			c.AbortWithStatus(http.StatusNotFound)
 		}
 	})
+
 	r.GET("/:sign", func(c *gin.Context) {
 		s := c.MustGet("store").(*store)
-		year, week := getDate(c)
-		sign := c.Param("sign")
-		if horoscope, found := s.GetHoroscope(year, week, sign); found {
-			c.Data(http.StatusOK, "application/json", horoscope)
+		y, w := getISOWeek(c)
+		if data, found := s.GetHoroscope(y, w, c.Param("sign")); found {
+			c.Data(http.StatusOK, "application/json", data)
 		} else {
 			c.AbortWithStatus(http.StatusNotFound)
 		}
 	})
 }
 
-func Server(s *store) *gin.Engine {
-	r := gin.Default()
-	r.Use(func(c *gin.Context) {
-		c.Set("store", s)
-		c.Next()
-	})
+func Server(s *store, release bool) *gin.Engine {
+	if release {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
-	l := r.Group("/latest")
-	l.Use(func(c *gin.Context) {
-		y, w := time.Now().ISOWeek()
-		c.Set("year", strconv.Itoa(y))
-		c.Set("week", strconv.Itoa(w))
-		c.Next()
-	})
-	mountRoutes(l)
+	r := gin.Default()
+	r.Use(bootstrapMiddleware(s))
+
+	l := r.Group("/current")
+	l.Use(latestMiddleware)
+	l.Use(humanMiddleware)
+	mount(l)
 
 	a := r.Group("/archive/:year/:week")
-	a.Use(func(c *gin.Context) {
-		c.Set("year", c.Param("year"))
-		c.Set("week", c.Param("week"))
-		c.Next()
-	})
-	mountRoutes(a)
+	a.Use(paramsMiddleware)
+	a.Use(humanMiddleware)
+	mount(a)
 
 	return r
 }
