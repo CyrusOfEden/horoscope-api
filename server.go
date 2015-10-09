@@ -5,7 +5,10 @@ import (
 )
 
 import (
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path"
 	"strconv"
 	"time"
 )
@@ -46,8 +49,18 @@ func humanMiddleware(c *gin.Context) {
 	}
 }
 
+func doc(filename string) func(*gin.Context) {
+	cwd, err := os.Getwd()
+	check(err)
+	doc, err := ioutil.ReadFile(path.Join(cwd, filename+".html"))
+	check(err)
+	return func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/html", doc)
+	}
+}
+
 func mount(r *gin.RouterGroup) {
-	r.GET("/", func(c *gin.Context) {
+	r.GET("", func(c *gin.Context) {
 		s := c.MustGet("store").(*store)
 		y, w := getISOWeek(c)
 		if data, found := s.GetHoroscopes(y, w); found {
@@ -74,14 +87,16 @@ func Server(s *store, release bool) *gin.Engine {
 	}
 
 	r := gin.Default()
-	r.Use(bootstrapMiddleware(s))
+	r.GET("/help", doc("help"))
 
 	l := r.Group("/current")
+	l.Use(bootstrapMiddleware(s))
 	l.Use(latestMiddleware)
 	l.Use(humanMiddleware)
 	mount(l)
 
 	a := r.Group("/archive/:year/:week")
+	a.Use(bootstrapMiddleware(s))
 	a.Use(paramsMiddleware)
 	a.Use(humanMiddleware)
 	mount(a)

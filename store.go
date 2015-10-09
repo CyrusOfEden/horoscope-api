@@ -79,7 +79,7 @@ func (s *store) BuildIndexes() {
 			s.weekIndex[yn][wn] = wn
 
 			curr, _ = strconv.Atoi(wn)
-			if curr - prev >= 1 {
+			if curr-prev >= 1 {
 				prevn = strconv.Itoa(prev)
 				for n = prev; n <= curr; n++ {
 					s.weekIndex[yn][strconv.Itoa(n)] = prevn

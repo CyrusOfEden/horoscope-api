@@ -1,0 +1,73 @@
+<!doctype html>
+<html class="no-js" lang="">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>The Onion (Unofficial) Horoscope JSON API</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/3.0.3/normalize.min.css">
+    <link rel="stylesheet" href="//brick.a.ssl.fastly.net/Cardo:400,700,400i">
+    <style>
+      body {
+        font-family: Cardo, Times, "Times New Roman", serif;
+        margin: 4rem auto;
+        width: 95%;
+        max-width: 720px;
+        color: #222;
+      }
+      a, a:visited, a:hover, a:active {
+        color: #0074d9;
+      }
+      code {
+        font-size: 90%;
+        color: #888;
+      }
+      p {
+        line-height: 1.618;
+      }
+      footer p {
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h2>An unofficial JSON API for The Onion's Horoscopes</h2>
+    </header>
+    <article>
+      <p><em>Welcome, dear visitor!</em></p>
+      <p>
+        If you, like me, enjoy the hilarity and witty satire of <a href="http://www.theonion.com/features/horoscope">The Onion's Horoscopes</a>, but have been looking for a (forgiving) JSON API, look no further!
+      </p>
+      <p>
+        I've exposed a couple of resources, all accessible via <code>GET</code> requests.
+      </p>
+      <p>
+        <code><a href="http://a.knrz.co/horoscope-api/current">http://a.knrz.co/horoscope-api/current</a></code><br>
+        will return an array of all the latest horoscopes.
+      </p>
+      <p>
+        <code><a href="http://a.knrz.co/horoscope-api/current/gemini">http://a.knrz.co/horoscope-api/current/:sign</a></code><br>
+        where <code>:sign</code> is your astrological sign (example, gemini), will return just the horoscope for that sign.
+      </p>
+      <p>
+        <code><a href="http://a.knrz.co/horoscope-api/archive/2015/32">http://a.knrz.co/horoscope-api/archive/:year/:week</a></code><br>
+        where <code>:year</code> and <code>:week</code> are self-explanatory (example, 2015 and 32). This will return an array of <em>the last published horoscopes</em> before that week.
+      </p>
+      <p>
+        <code><a href="http://a.knrz.co/horoscope-api/archive/2015/32/gemini">http://a.knrz.co/horoscope-api/archive/:year/:week/:sign</a></code><br>
+        the same as the previous one, but it will only return the horoscope for that week.
+      </p>
+      <p>
+        <strong>How it works</strong><br>
+        By default, any request for a particular week (even the current week) will always return horoscopes, regardless of whether or not The Onion actually published horoscopes for that week. For example, requesting the horoscopes for the 39th week of 2015 (for which The Onion did not publish anything) will return the horoscopes for the 37th week, as those were the last ones published. If you would like to be strict in your requests, for whatever reason, add <code>?human=false</code> to the end of your request.
+      </p>
+    </article>
+    <footer>
+      <p>If you, dear visitor, are from The Onion and believe that I've overstepped, I do apologize. It was unintentional. Please <a href="mailto:hi@knrz.co">contact me</a> so we can come up with a resolution, even if it means taking this service down.</p>
+    </footer>
+  </body>
+</html>
