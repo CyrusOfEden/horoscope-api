@@ -59,6 +59,12 @@ func doc(filename string) func(*gin.Context) {
 	}
 }
 
+func redirect(status int, path string) func(*gin.Context) {
+	return func(c *gin.Context) {
+		c.Redirect(status, path);
+	}
+}
+
 func mount(r *gin.RouterGroup) {
 	r.GET("", func(c *gin.Context) {
 		s := c.MustGet("store").(*store)
@@ -87,6 +93,7 @@ func Server(s *store, release bool) *gin.Engine {
 	}
 
 	r := gin.Default()
+	r.GET("/", redirect(301, "/help"))
 	r.GET("/help", doc("help"))
 
 	l := r.Group("/current")
