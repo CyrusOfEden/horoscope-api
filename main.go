@@ -57,7 +57,7 @@ func main() {
 		fmt.Println("done!")
 
 		if debug {
-			data, _ := json.MarshalIndent(s.weekIndex, "", "  ")
+			data, err := json.MarshalIndent(s.weekIndex, "", "  ")
 			fmt.Println(string(data), "", "  ")
 		}
 
